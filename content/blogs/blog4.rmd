@@ -1,0 +1,254 @@
+---
+categories:
+- ""
+- ""
+date: "2017-10-31T22:42:51-05:00"
+description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna
+  sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa
+  sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem
+  consequat tincidunt. Vivamus et sagittis tempus.
+draft: false
+image: pic07.jpg
+keywords: ""
+slug: aliquam
+title: Aliquam
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+```{r load-libraries, include=FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(lubridate)
+library(here)
+library(skimr)
+library(janitor)
+library(httr)
+library(readxl)
+library(vroom)
+library(wbstats)
+library(countrycode)
+library(patchwork)
+library(gganimate)
+library(infer)
+library(lubridate)
+library(knitr)
+library(mosaic)
+library(stats)
+library(corrr)
+library(gganimate)
+library(gifski)
+library(png)
+```
+
+# Climate change and temperature anomalies
+
+```{r weather_data, cache=TRUE}
+
+weather <- 
+  read_csv("https://data.giss.nasa.gov/gistemp/tabledata_v4/NH.Ts+dSST.csv", 
+           skip = 1, 
+           na = "***")
+```
+
+
+## Select the year and the twelve month variables from the `weather` dataset and convert the dataframe from wide to 'long' format. 
+
+```{r tidyweather}
+
+#Converting into long format, first column (year) stays
+weather_selected <- weather %>% 
+  select(1:13)
+
+tidyweather <- weather_selected %>% 
+  pivot_longer(cols = 2:13,
+               names_to = "month",
+               values_to = "delta") 
+
+tidyweather
+
+```
+
+## Let us plot the data using a time-series scatter plot, and add a trendline. 
+
+```{r scatter_plot}
+
+# Transforming the date
+tidyweather <- tidyweather %>%
+  mutate(date = ymd(paste(as.character(Year), month, "1")),
+         month = month(date, label=TRUE))
+
+# Creating scatterplot
+ggplot(tidyweather, aes(x=date, y = delta))+
+  geom_point(alpha = 0.4)+
+  geom_smooth(color="red", se = FALSE) +
+  theme_bw() +
+  labs (
+    title = "Weather Anomalies - Deviations (Base 1951-1980)",
+    x = "Year",
+    y = "Delta Temperature",
+    caption = "Source: National Aeronautics and Space Administration - Goddard Institute (2022)"
+  )
+
+```
+
+
+
+
+## Is the effect of increasing temperature more pronounced in some months?  
+
+```{r facet_wrap, echo=FALSE}
+
+# Facetting plot by month
+ggplot(tidyweather, aes(x=date, y = delta))+
+  geom_point(alpha = 0.4)+
+  geom_smooth(color="red", se = FALSE) +
+  facet_wrap(~month) +
+  theme_bw() +
+  labs (
+    title = "Weather Anomalies - Deviations by Month (Base 1951-1980)",
+    x = "Year",
+    y = "Delta Temperature",
+    caption = "Source: National Aeronautics and Space Administration - Goddard Institute (2022)"
+  )
+
+```
+
+**Answer:**\
+
+It looks like the colder months (Oct to April) have increased more significantly (steeper slope) than the summer months. This can also be confirmed by a report from the US Environmental Protection Agency which highlights that overally, minimum temperatures have increased at a higher rate than average maximum temperatures.
+
+
+
+We remove data before 1800 and before using `filter`. Then, we use the `mutate` function to create a new variable `interval` which contains information on which period each observation belongs to. We can assign the different periods using `case_when()`.
+
+```{r intervals}
+
+# Code provided, creating new column for intervals with case_when function
+comparison <- tidyweather %>% 
+  filter(Year>= 1881) %>%     #remove years prior to 1881
+  #create new variable 'interval', and assign values based on criteria below:
+  mutate(interval = case_when(
+    Year %in% c(1881:1920) ~ "1881-1920",
+    Year %in% c(1921:1950) ~ "1921-1950",
+    Year %in% c(1951:1980) ~ "1951-1980",
+    Year %in% c(1981:2010) ~ "1981-2010",
+    TRUE ~ "2011-present"
+  ))
+
+
+```
+
+
+## Create a density plot to study the distribution of monthly deviations (`delta`), grouped by the different time periods we are interested in. 
+
+```{r density_plot, fig.height=3}
+
+# Different density courves in same figure
+ggplot(comparison, aes(x = delta, fill = interval)) +
+  geom_density(alpha = 0.5)+
+  labs (
+    title = "Weather Anomalies - Deviations by Period (Base 1951-1980)",
+    x = "Delta Temperature",
+    y = "Density",
+    caption = "Source: National Aeronautics and Space Administration - Goddard Institute (2022)"
+  ) +
+  theme_bw()
+
+```
+
+
+## Create a scatter plot for average annual anomalies. 
+
+```{r averaging}
+
+#creating yearly averages
+average_annual_anomaly <- tidyweather %>% 
+  group_by(Year) %>%   #grouping data by Year
+  
+  # creating summaries for mean delta 
+  # use `na.rm=TRUE` to eliminate NA (not available) values 
+  summarise(meanDelta = mean(delta, na.rm=TRUE)) 
+
+#plotting the data:
+
+ggplot(average_annual_anomaly, aes(x = Year, y = meanDelta)) +
+  geom_point()+
+  #Fit the best fit line, using LOESS method
+  geom_smooth(method="loess", colour="red", se = FALSE)+
+  labs (
+    title = "Weather Anomalies - Deviations annual mean (Base 1951-1980)",
+    x = "Year",
+    y = "Delta Temperature",
+    caption = "Source: National Aeronautics and Space Administration - Goddard Institute (2022)"
+  ) +
+  #change theme to theme_bw() to have white background + black frame around plot
+  theme_bw()
+
+```
+
+## Confidence Interval for `delta`
+
+```{r calculate_CI_using_formula}
+
+# Using formula approach for CI
+formula_ci <- comparison %>% 
+  # choose the interval 2011-present
+  filter(interval == "2011-present") %>% 
+  group_by(interval) %>% 
+  
+  # calculate summary statistics for temperature deviation (delta) 
+  # calculate mean, SD, count, SE, lower/upper 95% CI
+  summarize(mean = mean(delta, na.rm=TRUE),
+            sd = sd(delta, na.rm=TRUE),
+            count = n(),
+            t_critical = qt(0.975, count-1),
+            se_delta = sd/sqrt(count),
+            margin_of_error = t_critical * se_delta,
+            delta_low = mean - margin_of_error,
+            delta_high = mean + margin_of_error)
+#print out CI
+kable(formula_ci,
+      caption = "CI by Formula")
+
+```
+
+
+```{r bootstrap}
+
+# Using bootstrap (infer package) approach for CI
+set.seed(1234)
+
+boot_delta <- comparison %>% 
+  filter(interval == "2011-present") %>% 
+  specify(response = delta) %>% 
+  generate(reps = 1000, type = "bootstrap") %>%
+  calculate(stat="mean")
+
+bootstrap_ci <- boot_delta %>% 
+  get_confidence_interval(level =0.95, type = "percentile")
+
+#print out CI
+kable(bootstrap_ci,
+      caption = "CI by Bootstrapping")
+```
+
+
+**Answer:**\
+
+We started by calculating the lower and upper boundary with the formula. This is done by using the t-distribution available in R (qt) and multiplying it with the standard error. The bootstrap simulation on the other hand creates 1000 repetitions out of the given data (delta in this case) and uses the get_confidence_interval function from the infer package to create the delta_low and delta_high value. First of all it can be said that with 1000 iterations, the bootstrap simulation yields the exact same results as the formula. Further the count (144) allows to have a low t_critical as well as a small standard error, producing a quite narrow confidence interval. 

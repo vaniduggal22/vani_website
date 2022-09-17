@@ -1,0 +1,226 @@
+---
+categories:
+- ""
+- ""
+date: "2017-10-31T22:42:51-05:00"
+description: Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna
+  sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa
+  sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem
+  consequat tincidunt. Vivamus et sagittis tempus.
+draft: false
+image: pic07.jpg
+keywords: ""
+slug: aliquam
+title: Aliquam
+---
+
+
+
+<div id="climate-change-and-temperature-anomalies" class="section level1">
+<h1>Climate change and temperature anomalies</h1>
+<pre class="r"><code>weather &lt;- 
+  read_csv(&quot;https://data.giss.nasa.gov/gistemp/tabledata_v4/NH.Ts+dSST.csv&quot;, 
+           skip = 1, 
+           na = &quot;***&quot;)</code></pre>
+<div id="select-the-year-and-the-twelve-month-variables-from-the-weather-dataset-and-convert-the-dataframe-from-wide-to-long-format." class="section level2">
+<h2>Select the year and the twelve month variables from the <code>weather</code> dataset and convert the dataframe from wide to ‘long’ format.</h2>
+<pre class="r"><code>#Converting into long format, first column (year) stays
+weather_selected &lt;- weather %&gt;% 
+  select(1:13)
+
+tidyweather &lt;- weather_selected %&gt;% 
+  pivot_longer(cols = 2:13,
+               names_to = &quot;month&quot;,
+               values_to = &quot;delta&quot;) 
+
+tidyweather</code></pre>
+<pre><code>## # A tibble: 1,716 × 3
+##     Year month delta
+##    &lt;dbl&gt; &lt;chr&gt; &lt;dbl&gt;
+##  1  1880 Jan   -0.39
+##  2  1880 Feb   -0.53
+##  3  1880 Mar   -0.23
+##  4  1880 Apr   -0.3 
+##  5  1880 May   -0.05
+##  6  1880 Jun   -0.18
+##  7  1880 Jul   -0.21
+##  8  1880 Aug   -0.25
+##  9  1880 Sep   -0.24
+## 10  1880 Oct   -0.3 
+## # … with 1,706 more rows</code></pre>
+</div>
+<div id="let-us-plot-the-data-using-a-time-series-scatter-plot-and-add-a-trendline." class="section level2">
+<h2>Let us plot the data using a time-series scatter plot, and add a trendline.</h2>
+<pre class="r"><code># Transforming the date
+tidyweather &lt;- tidyweather %&gt;%
+  mutate(date = ymd(paste(as.character(Year), month, &quot;1&quot;)),
+         month = month(date, label=TRUE))
+
+# Creating scatterplot
+ggplot(tidyweather, aes(x=date, y = delta))+
+  geom_point(alpha = 0.4)+
+  geom_smooth(color=&quot;red&quot;, se = FALSE) +
+  theme_bw() +
+  labs (
+    title = &quot;Weather Anomalies - Deviations (Base 1951-1980)&quot;,
+    x = &quot;Year&quot;,
+    y = &quot;Delta Temperature&quot;,
+    caption = &quot;Source: National Aeronautics and Space Administration - Goddard Institute (2022)&quot;
+  )</code></pre>
+<p><img src="/blogs/blog4_files/figure-html/scatter_plot-1.png" width="648" style="display: block; margin: auto;" /></p>
+</div>
+<div id="is-the-effect-of-increasing-temperature-more-pronounced-in-some-months" class="section level2">
+<h2>Is the effect of increasing temperature more pronounced in some months?</h2>
+<p><img src="/blogs/blog4_files/figure-html/facet_wrap-1.png" width="648" style="display: block; margin: auto;" /></p>
+<p><strong>Answer:</strong><br />
+</p>
+<p>It looks like the colder months (Oct to April) have increased more significantly (steeper slope) than the summer months. This can also be confirmed by a report from the US Environmental Protection Agency which highlights that overally, minimum temperatures have increased at a higher rate than average maximum temperatures.</p>
+<p>We remove data before 1800 and before using <code>filter</code>. Then, we use the <code>mutate</code> function to create a new variable <code>interval</code> which contains information on which period each observation belongs to. We can assign the different periods using <code>case_when()</code>.</p>
+<pre class="r"><code># Code provided, creating new column for intervals with case_when function
+comparison &lt;- tidyweather %&gt;% 
+  filter(Year&gt;= 1881) %&gt;%     #remove years prior to 1881
+  #create new variable &#39;interval&#39;, and assign values based on criteria below:
+  mutate(interval = case_when(
+    Year %in% c(1881:1920) ~ &quot;1881-1920&quot;,
+    Year %in% c(1921:1950) ~ &quot;1921-1950&quot;,
+    Year %in% c(1951:1980) ~ &quot;1951-1980&quot;,
+    Year %in% c(1981:2010) ~ &quot;1981-2010&quot;,
+    TRUE ~ &quot;2011-present&quot;
+  ))</code></pre>
+</div>
+<div id="create-a-density-plot-to-study-the-distribution-of-monthly-deviations-delta-grouped-by-the-different-time-periods-we-are-interested-in." class="section level2">
+<h2>Create a density plot to study the distribution of monthly deviations (<code>delta</code>), grouped by the different time periods we are interested in.</h2>
+<pre class="r"><code># Different density courves in same figure
+ggplot(comparison, aes(x = delta, fill = interval)) +
+  geom_density(alpha = 0.5)+
+  labs (
+    title = &quot;Weather Anomalies - Deviations by Period (Base 1951-1980)&quot;,
+    x = &quot;Delta Temperature&quot;,
+    y = &quot;Density&quot;,
+    caption = &quot;Source: National Aeronautics and Space Administration - Goddard Institute (2022)&quot;
+  ) +
+  theme_bw()</code></pre>
+<p><img src="/blogs/blog4_files/figure-html/density_plot-1.png" width="648" style="display: block; margin: auto;" /></p>
+</div>
+<div id="create-a-scatter-plot-for-average-annual-anomalies." class="section level2">
+<h2>Create a scatter plot for average annual anomalies.</h2>
+<pre class="r"><code>#creating yearly averages
+average_annual_anomaly &lt;- tidyweather %&gt;% 
+  group_by(Year) %&gt;%   #grouping data by Year
+  
+  # creating summaries for mean delta 
+  # use `na.rm=TRUE` to eliminate NA (not available) values 
+  summarise(meanDelta = mean(delta, na.rm=TRUE)) 
+
+#plotting the data:
+
+ggplot(average_annual_anomaly, aes(x = Year, y = meanDelta)) +
+  geom_point()+
+  #Fit the best fit line, using LOESS method
+  geom_smooth(method=&quot;loess&quot;, colour=&quot;red&quot;, se = FALSE)+
+  labs (
+    title = &quot;Weather Anomalies - Deviations annual mean (Base 1951-1980)&quot;,
+    x = &quot;Year&quot;,
+    y = &quot;Delta Temperature&quot;,
+    caption = &quot;Source: National Aeronautics and Space Administration - Goddard Institute (2022)&quot;
+  ) +
+  #change theme to theme_bw() to have white background + black frame around plot
+  theme_bw()</code></pre>
+<p><img src="/blogs/blog4_files/figure-html/averaging-1.png" width="648" style="display: block; margin: auto;" /></p>
+</div>
+<div id="confidence-interval-for-delta" class="section level2">
+<h2>Confidence Interval for <code>delta</code></h2>
+<pre class="r"><code># Using formula approach for CI
+formula_ci &lt;- comparison %&gt;% 
+  # choose the interval 2011-present
+  filter(interval == &quot;2011-present&quot;) %&gt;% 
+  group_by(interval) %&gt;% 
+  
+  # calculate summary statistics for temperature deviation (delta) 
+  # calculate mean, SD, count, SE, lower/upper 95% CI
+  summarize(mean = mean(delta, na.rm=TRUE),
+            sd = sd(delta, na.rm=TRUE),
+            count = n(),
+            t_critical = qt(0.975, count-1),
+            se_delta = sd/sqrt(count),
+            margin_of_error = t_critical * se_delta,
+            delta_low = mean - margin_of_error,
+            delta_high = mean + margin_of_error)
+#print out CI
+kable(formula_ci,
+      caption = &quot;CI by Formula&quot;)</code></pre>
+<table>
+<caption>(#tab:calculate_CI_using_formula)CI by Formula</caption>
+<colgroup>
+<col width="14%" />
+<col width="5%" />
+<col width="6%" />
+<col width="6%" />
+<col width="12%" />
+<col width="10%" />
+<col width="18%" />
+<col width="11%" />
+<col width="12%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">interval</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">count</th>
+<th align="right">t_critical</th>
+<th align="right">se_delta</th>
+<th align="right">margin_of_error</th>
+<th align="right">delta_low</th>
+<th align="right">delta_high</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2011-present</td>
+<td align="right">1.07</td>
+<td align="right">0.265</td>
+<td align="right">144</td>
+<td align="right">1.98</td>
+<td align="right">0.022</td>
+<td align="right">0.044</td>
+<td align="right">1.02</td>
+<td align="right">1.11</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># Using bootstrap (infer package) approach for CI
+set.seed(1234)
+
+boot_delta &lt;- comparison %&gt;% 
+  filter(interval == &quot;2011-present&quot;) %&gt;% 
+  specify(response = delta) %&gt;% 
+  generate(reps = 1000, type = &quot;bootstrap&quot;) %&gt;%
+  calculate(stat=&quot;mean&quot;)
+
+bootstrap_ci &lt;- boot_delta %&gt;% 
+  get_confidence_interval(level =0.95, type = &quot;percentile&quot;)
+
+#print out CI
+kable(bootstrap_ci,
+      caption = &quot;CI by Bootstrapping&quot;)</code></pre>
+<table>
+<caption><span id="tab:bootstrap">Table 1: </span>CI by Bootstrapping</caption>
+<thead>
+<tr class="header">
+<th align="right">lower_ci</th>
+<th align="right">upper_ci</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1.02</td>
+<td align="right">1.11</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Answer:</strong><br />
+</p>
+<p>We started by calculating the lower and upper boundary with the formula. This is done by using the t-distribution available in R (qt) and multiplying it with the standard error. The bootstrap simulation on the other hand creates 1000 repetitions out of the given data (delta in this case) and uses the get_confidence_interval function from the infer package to create the delta_low and delta_high value. First of all it can be said that with 1000 iterations, the bootstrap simulation yields the exact same results as the formula. Further the count (144) allows to have a low t_critical as well as a small standard error, producing a quite narrow confidence interval.</p>
+</div>
+</div>
