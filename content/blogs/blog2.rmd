@@ -8,7 +8,7 @@ draft: false
 image: pic09.jpg
 keywords: ""
 slug: magna
-title: Magna
+title: Gender&Salary
 ---
 
 ```{r, setup, echo=FALSE}
@@ -212,4 +212,5 @@ Look at the salary vs experience scatterplot. What can you infer from this plot?
 **Answer:**\
 
 The correlation matrix reweals many interesting things in just one visualization. Looking at the scatterplot we can see a clear correlation between years of experience and salary, this is true for both genders. The correlation can also be confirmed mathematically with a total cor of 0.8. In other words, the higher the experience the higher the salary. We have used two colors in the plot above to demonstrate that women salary increase more significantly with growing experience (stepper slope). With women having a median experience of 3 and men of 19.5 it is thus not surprising that there is a significant pay-gap. Omega should rather investigate the underlying reason why women have so little work experience. Are senior positions which require more experience mainly filled by man while graduate positions mainly by women? Anyhow, further investigation is needed!
+
 
