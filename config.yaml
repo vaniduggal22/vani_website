@@ -104,10 +104,6 @@ params:
         subtitle: Feugiat Amet Tempus
         title: Etiam
         url: blogs/ipsum
-        - image: pic06.jpg
-        subtitle: Feugiat Amet Tempus
-        title: Etiam
-        url: blogs/ipsum
   two:
     buttonText: Get Started
     enable: yes
