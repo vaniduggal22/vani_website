@@ -8,7 +8,202 @@ draft: false
 image: pic10.jpg
 keywords: ""
 slug: ipsum
-title: Ipsum
+title: Gender&Salary
 ---
 
 Nullam et orci eu lorem consequat tincidunt vivamus et sagittis magna sed nunc rhoncus condimentum sem. In efficitur ligula tate urna. Maecenas massa sed magna lacinia magna pellentesque lorem ipsum dolor. Nullam et orci eu lorem consequat tincidunt. Vivamus et sagittis tempus.
+
+
+```{r, setup, echo=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE, 
+  warning = FALSE, 
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+options(digits = 3)
+
+# default figure size
+knitr::opts_chunk$set(
+  fig.width=6.75, 
+  fig.height=6.75,
+  fig.align = "center"
+)
+```
+
+
+```{r load-libraries, echo=FALSE}
+library(tidyverse)  # Load ggplot2, dplyr, and all the other tidyverse packages
+library(mosaic)
+library(ggthemes)
+library(GGally)
+library(readxl)
+library(here)
+library(skimr)
+library(janitor)
+library(broom)
+library(tidyquant)
+library(infer)
+library(openintro)
+library(knitr)
+library(scales)                         
+library(data.table)  
+```
+
+
+
+## Relationship Salary - Gender ?
+
+```{r confint_single_valiables}
+# Summary Statistics of salary by gender
+kable(favstats (salary ~ gender, data=omega))
+
+# Dataframe with two rows (male-female) and having as columns gender, mean, SD, sample size, 
+# the t-critical value, the standard error, the margin of error, 
+# and the low/high endpoints of a 95% condifence interval
+
+ci_omega <- omega %>% 
+  group_by(gender) %>% 
+  summarize(mean = mean(salary, na.rm=TRUE),
+            sd = sd(salary, na.rm=TRUE),
+            count = n(),
+            t_critical = qt(0.975, count-1),
+            se_diff = sd/sqrt(count),
+            margin_of_error = t_critical * se_diff,
+            salary_low = mean - margin_of_error,
+            salary_high = mean + margin_of_error)
+
+# print the table with confidence interval
+
+kable(ci_omega,
+      caption="Salary CI by Gender")
+
+```
+
+What can you conclude from your analysis? A couple of sentences would be enough
+
+**Answer:**\
+The two confidence interval for women and men salary of a 95% do not overlap. The difference in salary between the two groups is thus significantly different. The t-test would thus not be needed in this case. 
+
+
+## Relationship Salary - Gender Hypothesis Test (t.test + infer)
+
+```{r hypothesis_testing}
+# hypothesis testing using t.test() 
+
+t.test(salary ~ gender, data = omega)
+
+
+# hypothesis testing using infer package
+
+#Calculating observed statistic
+obs_stat <- omega %>%
+  specify(salary ~ gender) %>%
+  calculate(stat = "diff in means",
+            order = c("female", "male"))
+
+set.seed(1234)
+salaries_in_null_world <- omega %>% 
+  
+  #Which variable we are interested in
+  specify(salary ~ gender) %>% 
+  
+  #Hypothesis with no (null) difference
+  hypothesize(null = "independence") %>% 
+  
+  #Create simulated samples
+  generate(reps = 10000, type = "permute") %>% 
+  
+  #Mean difference in each sample
+  calculate(stat = "diff in means",
+            order = c("female", "male")) # give the order for subtraction first, second
+
+#Visualize distribution  
+salaries_in_null_world %>% visualize()+
+  shade_p_value(obs_stat = obs_stat, direction = "both") 
+
+salaries_in_null_world %>% 
+  get_p_value(obs_stat = obs_stat, direction = "both")
+
+
+```
+
+What can you conclude from your analysis? A couple of sentences would be enough
+
+**Answer**:\
+
+The R t-test clearly showed that the null hypothesis (no difference) can be rejected. This can be seen by three indicators: first the |t-stat| is approximately > 2, second the CI for delta does not contain zero, third the p-value is < 5%.\
+With 1000 reps the bootstrap simulation gave a p-value of zero, this can be the case when the observed statistic is very unlikely. We thus had to increase the reps to 10000 to replicate the results from the formula. 
+
+
+## Relationship Experience - Gender?
+
+```{r, experience_stats}
+# Summary Statistics of salary by gender
+favstats (experience ~ gender, data=omega)
+
+```
+
+Based on this evidence, can you conclude that there is a significant difference between the experience of the male and female executives? Does your conclusion validate or endanger your conclusion about the difference in male and female salaries?  
+
+```{r ci_experience}
+
+#Using formula to create confidence interval
+
+ci_omega_experience <- omega %>% 
+  group_by(gender) %>% 
+  summarize(mean = mean(experience, na.rm=TRUE),
+            sd = sd(experience, na.rm=TRUE),
+            count = n(),
+            t_critical = qt(0.975, count-1),
+            se_diff = sd/sqrt(count),
+            margin_of_error = t_critical * se_diff,
+            experience_low = mean - margin_of_error,
+            experience_high = mean + margin_of_error)
+
+# print the table with confidence interval
+
+kable(ci_omega_experience,
+      caption="Experience CI by Gender")
+
+```
+
+**Answer:**\
+
+The two experience confidence intervals for women and men at 95% do not overlap. The difference between the two groups is thus significantly different and there is no need to run a t-test. These findings would endager the conclusion drawn above (gender-based salary discrimination) as it seems that not only gender, but an additional previously not considered factor, experience, could influence the pay-gap. Further anaylsis is suggested.
+
+
+## Relationship Salary - Experience ?
+
+Someone at the meeting argues that clearly, a more thorough analysis of the relationship between salary and experience is required before any conclusion can be drawn about whether there is any gender-based salary discrimination in the company.
+
+Analyse the relationship between salary and experience. Draw a scatterplot to visually inspect the data
+
+
+```{r, salary_exp_scatter, fig.height=4}
+
+ggplot(omega, aes(x = experience, y = salary, color = gender)) +
+  geom_point()+
+  geom_smooth(method='lm', se=FALSE)+
+  labs(
+    title = "Relationship between salary and experience"
+  )+
+  theme_bw()
+
+```
+
+
+## Check correlations between Gender, Experience and Salary
+
+
+```{r, ggpairs}
+omega %>% 
+  select(gender, experience, salary) %>% #order variables they will appear in ggpairs()
+  ggpairs(aes(colour=gender, alpha = 0.3))+
+  theme_bw()
+```
+
+Look at the salary vs experience scatterplot. What can you infer from this plot? Explain in a couple of sentences
+
+**Answer:**\
+
+The correlation matrix reweals many interesting things in just one visualization. Looking at the scatterplot we can see a clear correlation between years of experience and salary, this is true for both genders. The correlation can also be confirmed mathematically with a total cor of 0.8. In other words, the higher the experience the higher the salary. We have used two colors in the plot above to demonstrate that women salary increase more significantly with growing experience (stepper slope). With women having a median experience of 3 and men of 19.5 it is thus not surprising that there is a significant pay-gap. Omega should rather investigate the underlying reason why women have so little work experience. Are senior positions which require more experience mainly filled by man while graduate positions mainly by women? Anyhow, further investigation is needed!
