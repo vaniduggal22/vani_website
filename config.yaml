@@ -8,7 +8,8 @@ params:
   banner:
     buttonText: Get Started
     subtitle: |-
-      A Masters in Analytics and Management student at London Business School. 
+      A RESPONSIVE SITE TEMPLATE DESIGNED BY HTML5 UP
+      AND RELEASED UNDER THE CREATIVE COMMONS.
     title: Hi, my name is Vani
   blog: {}
   contact:
@@ -82,7 +83,7 @@ params:
     showcase:
       - image: pic01.jpg
         subtitle: Ipsum Dolor Sit Amet
-        title: Weather Analysis
+        title: Aliquam
         url: blogs/aliquam
       - image: pic02.jpg
         subtitle: Feugiat Amet Tempus
@@ -90,7 +91,7 @@ params:
         url: blogs/tempus
       - image: pic03.jpg
         subtitle: Lorem Etiam Nullam
-        title: Gender&Salary
+        title: Magna
         url: blogs/magna
       - image: pic04.jpg
         subtitle: Nisl Sed Aliquam
